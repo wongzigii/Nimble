@@ -30,12 +30,12 @@ NS_ASSUME_NONNULL_BEGIN
 
 #define DEFINE_NMB_EXPECT_OVERLOAD(TYPE, EXPR) \
         NIMBLE_EXPORT_INLINE NIMBLE_OVERLOADABLE \
-        NMBExpectation *NMB_expect(TYPE(^actualBlock)(), NSString *file, NSUInteger line) { \
+        NMBExpectation *NMB_expect(TYPE(^actualBlock)(void), NSString *file, NSUInteger line) { \
             return NMB_expect(^id { return EXPR; }, file, line); \
         }
 
     NIMBLE_EXPORT NIMBLE_OVERLOADABLE
-    NMBExpectation *NMB_expect(id(^actualBlock)(), NSString *file, NSUInteger line);
+    NMBExpectation *NMB_expect(id(^actualBlock)(void), NSString *file, NSUInteger line);
 
     // overloaded dispatch for nils - expect(nil)
     DEFINE_NMB_EXPECT_OVERLOAD(void*, nil)
@@ -50,12 +50,17 @@ NS_ASSUME_NONNULL_BEGIN
     DEFINE_NMB_EXPECT_OVERLOAD(unsigned long long, @(actualBlock()))
     DEFINE_NMB_EXPECT_OVERLOAD(char, @(actualBlock()))
     DEFINE_NMB_EXPECT_OVERLOAD(unsigned char, @(actualBlock()))
+    // bool doesn't get the compiler to dispatch to BOOL types, but using BOOL here seems to allow
+    // the compiler to dispatch to bool.
+    DEFINE_NMB_EXPECT_OVERLOAD(BOOL, @(actualBlock()))
+    DEFINE_NMB_EXPECT_OVERLOAD(char *, @(actualBlock()))
+
 
 #undef DEFINE_NMB_EXPECT_OVERLOAD
 
 
 
-NIMBLE_EXPORT NMBExpectation *NMB_expectAction(void(^actualBlock)(), NSString *file, NSUInteger line);
+NIMBLE_EXPORT NMBExpectation *NMB_expectAction(void(^actualBlock)(void), NSString *file, NSUInteger line);
 
 
 
@@ -68,11 +73,13 @@ NIMBLE_EXPORT NMBExpectation *NMB_expectAction(void(^actualBlock)(), NSString *f
 
 
     NIMBLE_EXPORT NIMBLE_OVERLOADABLE
-    id<NMBMatcher> NMB_equal(id expectedValue);
+    id<NMBMatcher> NMB_equal(__nullable id expectedValue);
 
-    NIMBLE_EXPORT_INLINE NIMBLE_OVERLOADABLE
-    id<NMBMatcher> equal(id expectedValue) { return NMB_equal(expectedValue); }
+    NIMBLE_SHORT_OVERLOADED(id<NMBMatcher> equal(__nullable id expectedValue),
+                            NMB_equal(expectedValue));
 
+    // overloaded dispatch for nils - expect(nil)
+    DEFINE_OVERLOAD(void*__nullable, (id)nil)
     DEFINE_OVERLOAD(NSRange, NIMBLE_VALUE_OF(expectedValue))
     DEFINE_OVERLOAD(long, @(expectedValue))
     DEFINE_OVERLOAD(unsigned long, @(expectedValue))
@@ -84,6 +91,10 @@ NIMBLE_EXPORT NMBExpectation *NMB_expectAction(void(^actualBlock)(), NSString *f
     DEFINE_OVERLOAD(unsigned long long, @(expectedValue))
     DEFINE_OVERLOAD(char, @(expectedValue))
     DEFINE_OVERLOAD(unsigned char, @(expectedValue))
+    // bool doesn't get the compiler to dispatch to BOOL types, but using BOOL here seems to allow
+    // the compiler to dispatch to bool.
+    DEFINE_OVERLOAD(BOOL, @(expectedValue))
+    DEFINE_OVERLOAD(char *, @(expectedValue))
 
 #undef DEFINE_OVERLOAD
 
@@ -93,16 +104,15 @@ NIMBLE_EXPORT NMBExpectation *NMB_expectAction(void(^actualBlock)(), NSString *f
         id<NMBMatcher> NMB_haveCount(TYPE expectedValue) { \
             return NMB_haveCount((EXPR)); \
         } \
-        NIMBLE_SHORT_OVERLOADED(id<NMBMatcher> haveCount(TYPE expectedValue), NMB_haveCount(expectedValue));
+        NIMBLE_SHORT_OVERLOADED(id<NMBMatcher> haveCount(TYPE expectedValue), \
+            NMB_haveCount(expectedValue));
 
 
     NIMBLE_EXPORT NIMBLE_OVERLOADABLE
     id<NMBMatcher> NMB_haveCount(id expectedValue);
 
-    NIMBLE_EXPORT_INLINE NIMBLE_OVERLOADABLE
-    id<NMBMatcher> haveCount(id expectedValue) {
-        return NMB_haveCount(expectedValue);
-    }
+    NIMBLE_SHORT_OVERLOADED(id<NMBMatcher> haveCount(id expectedValue),
+                            NMB_haveCount(expectedValue));
 
     DEFINE_OVERLOAD(long, @(expectedValue))
     DEFINE_OVERLOAD(unsigned long, @(expectedValue))
@@ -120,16 +130,12 @@ NIMBLE_EXPORT NMBExpectation *NMB_expectAction(void(^actualBlock)(), NSString *f
         NMBObjCBeCloseToMatcher *NMB_beCloseTo(TYPE expectedValue) { \
             return NMB_beCloseTo((NSNumber *)(EXPR)); \
         } \
-        NIMBLE_EXPORT_INLINE NIMBLE_OVERLOADABLE \
-        NMBObjCBeCloseToMatcher *beCloseTo(TYPE expectedValue) { \
-            return NMB_beCloseTo(expectedValue); \
-        }
+        NIMBLE_SHORT_OVERLOADED(NMBObjCBeCloseToMatcher *beCloseTo(TYPE expectedValue), \
+            NMB_beCloseTo(expectedValue));
 
     NIMBLE_EXPORT NIMBLE_OVERLOADABLE NMBObjCBeCloseToMatcher *NMB_beCloseTo(NSNumber *expectedValue);
-    NIMBLE_EXPORT_INLINE NIMBLE_OVERLOADABLE
-    NMBObjCBeCloseToMatcher *beCloseTo(NSNumber *expectedValue) {
-        return NMB_beCloseTo(expectedValue);
-    }
+    NIMBLE_SHORT_OVERLOADED(NMBObjCBeCloseToMatcher *beCloseTo(NSNumber *expectedValue),
+                            NMB_beCloseTo(expectedValue));
 
     // it would be better to only overload float & double, but zero becomes ambigious
 
@@ -163,7 +169,9 @@ NIMBLE_EXPORT_INLINE id<NMBMatcher> beginWith(id itemElementOrSubstring) {
 
 #define DEFINE_OVERLOAD(TYPE, EXPR) \
         NIMBLE_EXPORT_INLINE NIMBLE_OVERLOADABLE \
-        id<NMBMatcher> NMB_beGreaterThan(TYPE expectedValue) { return NMB_beGreaterThan((EXPR)); } \
+        id<NMBMatcher> NMB_beGreaterThan(TYPE expectedValue) { \
+            return NMB_beGreaterThan((EXPR)); \
+        } \
         NIMBLE_SHORT_OVERLOADED(id<NMBMatcher> beGreaterThan(TYPE expectedValue), NMB_beGreaterThan(expectedValue));
 
     NIMBLE_EXPORT NIMBLE_OVERLOADABLE
@@ -178,6 +186,8 @@ NIMBLE_EXPORT_INLINE id<NMBMatcher> beginWith(id itemElementOrSubstring) {
     DEFINE_OVERLOAD(unsigned long, @(expectedValue))
     DEFINE_OVERLOAD(int, @(expectedValue))
     DEFINE_OVERLOAD(unsigned int, @(expectedValue))
+    DEFINE_OVERLOAD(float, @(expectedValue))
+    DEFINE_OVERLOAD(double, @(expectedValue))
     DEFINE_OVERLOAD(long long, @(expectedValue))
     DEFINE_OVERLOAD(unsigned long long, @(expectedValue))
     DEFINE_OVERLOAD(char, @(expectedValue))
@@ -190,10 +200,8 @@ NIMBLE_EXPORT_INLINE id<NMBMatcher> beginWith(id itemElementOrSubstring) {
         id<NMBMatcher> NMB_beGreaterThanOrEqualTo(TYPE expectedValue) { \
             return NMB_beGreaterThanOrEqualTo((EXPR)); \
         } \
-        NIMBLE_EXPORT_INLINE NIMBLE_OVERLOADABLE \
-        id<NMBMatcher> beGreaterThanOrEqualTo(TYPE expectedValue) { \
-            return NMB_beGreaterThanOrEqualTo(expectedValue); \
-        }
+        NIMBLE_SHORT_OVERLOADED(id<NMBMatcher> beGreaterThanOrEqualTo(TYPE expectedValue), \
+            NMB_beGreaterThanOrEqualTo(expectedValue));
 
     NIMBLE_EXPORT NIMBLE_OVERLOADABLE
     id<NMBMatcher> NMB_beGreaterThanOrEqualTo(NSNumber *expectedValue);
@@ -214,6 +222,7 @@ NIMBLE_EXPORT_INLINE id<NMBMatcher> beginWith(id itemElementOrSubstring) {
     DEFINE_OVERLOAD(char, @(expectedValue))
     DEFINE_OVERLOAD(unsigned char, @(expectedValue))
 
+
 #undef DEFINE_OVERLOAD
 
 NIMBLE_EXPORT id<NMBMatcher> NMB_beIdenticalTo(id expectedInstance);
@@ -230,11 +239,8 @@ NIMBLE_SHORT(id<NMBMatcher> be(id expectedInstance),
         id<NMBMatcher> NMB_beLessThan(TYPE expectedValue) { \
             return NMB_beLessThan((EXPR)); \
         } \
-        NIMBLE_EXPORT_INLINE NIMBLE_OVERLOADABLE \
-        id<NMBMatcher> beLessThan(TYPE expectedValue) { \
-            return NMB_beLessThan(expectedValue); \
-        }
-
+        NIMBLE_SHORT_OVERLOADED(id<NMBMatcher> beLessThan(TYPE expectedValue), \
+            NMB_beLessThan(expectedValue));
 
     NIMBLE_EXPORT NIMBLE_OVERLOADABLE
     id<NMBMatcher> NMB_beLessThan(NSNumber *expectedValue);
@@ -263,10 +269,8 @@ NIMBLE_SHORT(id<NMBMatcher> be(id expectedInstance),
     id<NMBMatcher> NMB_beLessThanOrEqualTo(TYPE expectedValue) { \
         return NMB_beLessThanOrEqualTo((EXPR)); \
     } \
-    NIMBLE_EXPORT_INLINE NIMBLE_OVERLOADABLE \
-    id<NMBMatcher> beLessThanOrEqualTo(TYPE expectedValue) { \
-        return NMB_beLessThanOrEqualTo(expectedValue); \
-    }
+    NIMBLE_SHORT_OVERLOADED(id<NMBMatcher> beLessThanOrEqualTo(TYPE expectedValue), \
+        NMB_beLessThanOrEqualTo(expectedValue));
 
 
     NIMBLE_EXPORT NIMBLE_OVERLOADABLE
@@ -320,6 +324,10 @@ NIMBLE_EXPORT id<NMBMatcher> NMB_containWithNilTermination(id itemOrSubstring, .
 #define contain(...) NMB_contain(__VA_ARGS__)
 #endif
 
+NIMBLE_EXPORT id<NMBMatcher> NMB_containElementSatisfying(BOOL(^predicate)(id));
+NIMBLE_SHORT(id<NMBMatcher> containElementSatisfying(BOOL(^predicate)(id)),
+             NMB_containElementSatisfying(predicate));
+
 NIMBLE_EXPORT id<NMBMatcher> NMB_endWith(id itemElementOrSubstring);
 NIMBLE_SHORT(id<NMBMatcher> endWith(id itemElementOrSubstring),
              NMB_endWith(itemElementOrSubstring));
@@ -342,6 +350,12 @@ NIMBLE_EXPORT id<NMBMatcher> NMB_satisfyAnyOfWithMatchers(id matchers);
 #define satisfyAnyOf(...) NMB_satisfyAnyOf(__VA_ARGS__)
 #endif
 
+NIMBLE_EXPORT id<NMBMatcher> NMB_satisfyAllOfWithMatchers(id matchers);
+#define NMB_satisfyAllOf(...) NMB_satisfyAllOfWithMatchers(@[__VA_ARGS__])
+#ifndef NIMBLE_DISABLE_SHORT_SYNTAX
+#define satisfyAllOf(...) NMB_satisfyAllOf(__VA_ARGS__)
+#endif
+
 // In order to preserve breakpoint behavior despite using macros to fill in __FILE__ and __LINE__,
 // define a builder that populates __FILE__ and __LINE__, and returns a block that takes timeout
 // and action arguments. See https://github.com/Quick/Quick/pull/185 for details.
@@ -358,8 +372,6 @@ NIMBLE_EXPORT void NMB_failWithMessage(NSString *msg, NSString *file, NSUInteger
 #define NMB_waitUntilTimeout NMB_waitUntilTimeoutBuilder(@(__FILE__), __LINE__)
 #define NMB_waitUntil NMB_waitUntilBuilder(@(__FILE__), __LINE__)
 
-#undef NIMBLE_VALUE_OF
-
 #ifndef NIMBLE_DISABLE_SHORT_SYNTAX
 #define expect(...) NMB_expect(^{ return (__VA_ARGS__); }, @(__FILE__), __LINE__)
 #define expectAction(BLOCK) NMB_expectAction((BLOCK), @(__FILE__), __LINE__)
@@ -369,6 +381,8 @@ NIMBLE_EXPORT void NMB_failWithMessage(NSString *msg, NSString *file, NSUInteger
 
 #define waitUntilTimeout NMB_waitUntilTimeout
 #define waitUntil NMB_waitUntil
+
+#undef NIMBLE_VALUE_OF
 
 #endif
 
